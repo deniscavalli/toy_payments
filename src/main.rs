@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::env;
 use std::sync::atomic::AtomicBool;
 use std::sync::mpsc;
 use std::sync::mpsc::{Receiver, Sender};
@@ -18,6 +19,11 @@ mod processors;
 mod structs;
 
 fn main() {
+    let arguments: Vec<String> = env::args().collect();
+    let csv_file = arguments[1].clone();
+    
+
+
     // Client records on a HashMap, the key is the client's ID
     let clients: HashMap<u16, ClientAccount> = HashMap::new();
     let clients_ledger = Arc::new(Mutex::new(clients));
@@ -38,7 +44,7 @@ fn main() {
 
     // Reader thread    
     let tx_clone_reader = tx_transactions.clone();
-    let handle_reader = thread::spawn(|| reader::read(tx_clone_reader).unwrap());
+    let handle_reader = thread::spawn(|| reader::read(tx_clone_reader, csv_file).unwrap());
 
     // Thread that will store the Transactions to the HashMap
     let tl_store = Arc::clone(&transactions_ledger);

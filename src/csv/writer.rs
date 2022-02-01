@@ -21,7 +21,6 @@ pub fn write(
     while !stop && start_writing.load(Ordering::Relaxed) {
         let mut wtr = csv::Writer::from_writer(io::stdout());
         for (_, value) in clients_ledger.lock().unwrap().iter() {
-            let mut wtr = csv::Writer::from_writer(io::stdout());
             wtr.serialize(value)?;
         }
         wtr.flush()?;
