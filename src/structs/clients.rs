@@ -324,5 +324,4 @@ mod tests {
         assert_eq!(ca.held, Decimal::new(1455, 2));
         assert_eq!(ca.total, Decimal::new(0, 0));
     }
-
 }

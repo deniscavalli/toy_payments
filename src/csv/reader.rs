@@ -4,7 +4,6 @@ use csv::{ReaderBuilder, Trim};
 use std::error::Error;
 use std::fmt::Result as FmtResult;
 use std::fmt::{Display, Formatter};
-use std::io;
 use std::sync::mpsc::Sender;
 
 use crate::structs::transaction::Transaction;
@@ -32,16 +31,16 @@ impl Display for CSVReaderError {
 
 impl Error for CSVReaderError {}
 
-/// Reads a CSV entry from the STDIN and send it to the Sender
+/// Reads a CSV entry from csv_file_path and send it to the Sender
 ///
 /// # Arguments
 ///
 /// * `tx_channel` - A Sender channel that the entries will be sent
 ///
-pub fn read(tx_channel: Sender<Transaction>) -> Result<(), CSVReaderError> {
+pub fn read(tx_channel: Sender<Transaction>, csv_file_path: String) -> Result<(), CSVReaderError> {
     let mut rdr = ReaderBuilder::new()
         .trim(Trim::All)
-        .from_reader(io::stdin());
+        .from_path(csv_file_path).unwrap();
     for tx in rdr.deserialize() {
         match tx {
             Ok(_) => {
