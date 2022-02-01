@@ -18,40 +18,49 @@ mod processors;
 mod structs;
 
 fn main() {
+    // Client records on a HashMap, the key is the client's ID
     let clients: HashMap<u16, ClientAccount> = HashMap::new();
     let clients_ledger = Arc::new(Mutex::new(clients));
 
+    // Tx records on a HashMap, the key is the tx's ID
     let transactions: HashMap<u32, TransactionRecord> = HashMap::new();
     let transactions_ledger = Arc::new(Mutex::new(transactions));
 
+    // Atomic flags to write the client's records to STDOUT
     let start_write = Arc::new(AtomicBool::new(false));
     let start_writer = Arc::clone(&start_write);
 
+    // Channels for the threads communication
     let (tx_transactions, rx_transactions): (Sender<Transaction>, Receiver<Transaction>) =
         mpsc::channel();
     let (tx_transactions2, rx_transactions2): (Sender<Transaction>, Receiver<Transaction>) =
         mpsc::channel();
 
-    let tx_clone1 = tx_transactions.clone();
-    let handle1 = thread::spawn(|| reader::read(tx_clone1).unwrap());
+    // Reader thread    
+    let tx_clone_reader = tx_transactions.clone();
+    let handle_reader = thread::spawn(|| reader::read(tx_clone_reader).unwrap());
 
-    let tl_clone1 = Arc::clone(&transactions_ledger);
-    let tx_clone2 = tx_transactions2.clone();
-    let handle2 = thread::spawn(|| {
-        txprocessor::store_transactions(rx_transactions, tx_clone2, tl_clone1).unwrap()
+    // Thread that will store the Transactions to the HashMap
+    let tl_store = Arc::clone(&transactions_ledger);
+    let tx_store = tx_transactions2.clone();
+    let handle_store = thread::spawn(|| {
+        txprocessor::store_transactions(rx_transactions, tx_store, tl_store).unwrap()
     });
 
-    let tl_clone2 = Arc::clone(&transactions_ledger);
-    let cl_clone = Arc::clone(&clients_ledger);
-    let handle3 = thread::spawn(|| {
-        txprocessor::process_transactions(rx_transactions2, tl_clone2, cl_clone, start_write)
+    // Thread that will process the Transactions and, by the end,
+    // enable the writer thread
+    let tl_process = Arc::clone(&transactions_ledger);
+    let cl_process = Arc::clone(&clients_ledger);
+    let handle_process = thread::spawn(|| {
+        txprocessor::process_transactions(rx_transactions2, tl_process, cl_process, start_write)
             .unwrap()
     });
 
-    handle1.join().unwrap();
-    handle2.join().unwrap();
-    handle3.join().unwrap();
+    handle_reader.join().unwrap();
+    handle_store.join().unwrap();
+    handle_process.join().unwrap();
 
-    let handle4 = thread::spawn(|| writer::write(clients_ledger, start_writer).unwrap());
-    handle4.join().unwrap();
+    // By last, writer thread that will print the client records to STDOUT
+    let handle_writer = thread::spawn(|| writer::write(clients_ledger, start_writer).unwrap());
+    handle_writer.join().unwrap();
 }
